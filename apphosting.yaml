@@ -1,15 +1,30 @@
 runConfig:
-  runtime: nodejs20
-  
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 100
+  concurrency: 80
+
 env:
   - variable: MPESA_CONSUMER_KEY
+    secret: mpesa_consumer_key
   - variable: MPESA_CONSUMER_SECRET
+    secret: mpesa_consumer_secret
   - variable: MPESA_SHORTCODE
+    secret: mpesa_shortcode
   - variable: MPESA_PASSKEY
+    secret: mpesa_passkey
   - variable: MPESA_CALLBACK_URL
+    value: "https://your-callback-url"
   - variable: FIREBASE_PROJECT_ID
+    secret: firebase_project_id
   - variable: FIREBASE_CLIENT_EMAIL
+    secret: firebase_client_email
   - variable: FIREBASE_PRIVATE_KEY
+    secret: firebase_private_key
   - variable: FIREBASE_DATABASE_URL
+    secret: firebase_database_url
   - variable: EMAIL_USER
+    secret: email_user
   - variable: EMAIL_PASS
+    secret: email_pass
