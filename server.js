@@ -69,7 +69,7 @@ try {
    🚀 Express App Setup
    ====================================================== */
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 8080;
 
 // SIMPLE CORS - allow all origins for now (you can restrict later)
 app.use(cors({
