@@ -1,3 +1,6 @@
+runtime: nodejs18
+entryPoint: server.js
+
 runConfig:
   cpu: 1
   memoryMiB: 512
@@ -32,4 +35,3 @@ env:
     secret: emailjs_user_id
   - variable: EMAILJS_ACCESS_TOKEN
     secret: emailjs_access_token
-
