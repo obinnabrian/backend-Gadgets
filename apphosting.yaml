@@ -2,7 +2,7 @@ runConfig:
   cpu: 1
   memoryMiB: 512
   minInstances: 0
-  maxInstances: 100
+  maxInstances: 20
   concurrency: 80
 
 env:
@@ -15,7 +15,7 @@ env:
   - variable: MPESA_PASS_KEY
     secret: mpesa_passkey
   - variable: MPESA_CALLBACK_URL
-    value: "https://your-callback-url"
+    value: "https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback"
   - variable: FIREBASE_PROJECT_ID
     secret: firebase_project_id
   - variable: FIREBASE_CLIENT_EMAIL
