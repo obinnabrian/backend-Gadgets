@@ -15,7 +15,7 @@ env:
   - variable: MPESA_PASS_KEY
     secret: mpesa_passkey
   - variable: MPESA_CALLBACK_URL
-    value: "https://your-callback-url"
+    value: "https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback"
   - variable: FIREBASE_PROJECT_ID
     secret: firebase_project_id
   - variable: FIREBASE_CLIENT_EMAIL
@@ -32,3 +32,4 @@ env:
     secret: emailjs_user_id
   - variable: EMAILJS_ACCESS_TOKEN
     secret: emailjs_access_token
+
