@@ -10,9 +10,9 @@ env:
     secret: mpesa_consumer_key
   - variable: MPESA_CONSUMER_SECRET
     secret: mpesa_consumer_secret
-  - variable: MPESA_SHORTCODE
+  - variable: MPESA_SHORT_CODE
     secret: mpesa_shortcode
-  - variable: MPESA_PASSKEY
+  - variable: MPESA_PASS_KEY
     secret: mpesa_passkey
   - variable: MPESA_CALLBACK_URL
     value: "https://your-callback-url"
@@ -24,7 +24,11 @@ env:
     secret: firebase_private_key
   - variable: FIREBASE_DATABASE_URL
     secret: firebase_database_url
-  - variable: EMAIL_USER
-    secret: email_user
-  - variable: EMAIL_PASS
-    secret: email_pass
+  - variable: EMAILJS_SERVICE_ID
+    secret: emailjs_service_id
+  - variable: EMAILJS_TEMPLATE_ID
+    secret: emailjs_template_id
+  - variable: EMAILJS_USER_ID
+    secret: emailjs_user_id
+  - variable: EMAILJS_ACCESS_TOKEN
+    secret: emailjs_access_token
