@@ -1,0 +1,15 @@
+runConfig:
+  runtime: nodejs20
+  
+env:
+  - variable: MPESA_CONSUMER_KEY
+  - variable: MPESA_CONSUMER_SECRET
+  - variable: MPESA_SHORTCODE
+  - variable: MPESA_PASSKEY
+  - variable: MPESA_CALLBACK_URL
+  - variable: FIREBASE_PROJECT_ID
+  - variable: FIREBASE_CLIENT_EMAIL
+  - variable: FIREBASE_PRIVATE_KEY
+  - variable: FIREBASE_DATABASE_URL
+  - variable: EMAIL_USER
+  - variable: EMAIL_PASS
