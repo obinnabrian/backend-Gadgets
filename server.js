@@ -316,10 +316,33 @@ app.get('/api/debug', (req, res) => {
 const ADMIN_PHONE = '254723555861';
 const SMS_SENDER_ID = 'Crestrock';
 
+// Log SMS config at startup
+console.log('📱 SMS Config:');
+console.log('   HOSTPINNACLE_SMS_API_KEY set:', !!process.env.HOSTPINNACLE_SMS_API_KEY);
+console.log('   API Key value:', process.env.HOSTPINNACLE_SMS_API_KEY ? `${process.env.HOSTPINNACLE_SMS_API_KEY.substring(0, 8)}...` : 'NOT SET');
+
 async function sendHostPinnaclesSMS(phone, message) {
   const apiKey = process.env.HOSTPINNACLE_SMS_API_KEY || '1ded5da8f455a25ef5566afd260a1158d8963892';
-  const response = await fetch(`https://smsportal.hostpinnacle.co.ke/SMSApi/send/?apikey=${apiKey}&partnerID=4725&message=${encodeURIComponent(message)}&Sender_ID=${SMS_SENDER_ID}&shortcode=${SMS_SENDER_ID}&mobile=${phone}`);
-  return response.text();
+  console.log('📱 Sending SMS with API key:', apiKey.substring(0, 8) + '...');
+  console.log('   Phone:', phone);
+  console.log('   Message:', message);
+  
+  const url = `https://smsportal.hostpinnacle.co.ke/SMSApi/send`;
+  const params = new URLSearchParams({
+    apikey: apiKey,
+    partnerID: '4725',
+    message: message,
+    Sender_ID: SMS_SENDER_ID,
+    shortcode: SMS_SENDER_ID,
+    mobile: phone
+  });
+  
+  console.log('   URL:', url + '?' + params.toString());
+  
+  const response = await fetch(`${url}?${params.toString()}`);
+  const result = await response.text();
+  console.log('   Response:', result);
+  return result;
 }
 
 app.post('/api/sms/send-order-confirmation', async (req, res) => {
