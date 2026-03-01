@@ -6,10 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const bodyParser = require('body-parser');
-const dotenv = require('dotenv');
 const admin = require('firebase-admin');
-
-dotenv.config();
 
 /* ======================================================
    🔥 Firebase Admin Initialization
@@ -25,6 +22,15 @@ async function initializeFirebase() {
     'FIREBASE_DATABASE_URL'
   ];
 
+  // Debug: Log all env var presence
+  console.log('=== Firebase Config Debug ===');
+  console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET');
+  console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'NOT SET');
+  console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? 'SET' : 'NOT SET', 
+    process.env.FIREBASE_PRIVATE_KEY ? `(length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : '');
+  console.log('FIREBASE_DATABASE_URL:', process.env.FIREBASE_DATABASE_URL ? 'SET' : 'NOT SET');
+  console.log('=============================');
+
   const missing = requiredVars.filter(v => !process.env[v]);
   
   if (missing.length > 0) {
@@ -34,21 +40,25 @@ async function initializeFirebase() {
   }
 
   // Check if private key is a placeholder
-  if (process.env.FIREBASE_PRIVATE_KEY.includes('YOUR_PRIVATE_KEY_HERE') || 
-      process.env.FIREBASE_PRIVATE_KEY.includes('placeholder')) {
-    console.warn('⚠️ Firebase private key is a placeholder - Firebase will not be initialized');
+  const keyValue = process.env.FIREBASE_PRIVATE_KEY;
+  if (keyValue.includes('YOUR_PRIVATE_KEY_HERE') || 
+      keyValue.includes('placeholder') ||
+      keyValue.includes('GET_THIS_FROM') ||
+      keyValue.length < 100) {
+    console.warn('⚠️ Firebase private key appears to be invalid or placeholder');
+    console.warn('Private key preview:', keyValue.substring(0, 100));
     return false;
   }
 
   try {
-    // Robust private key parser - handles both \n and literal newlines
+    // Robust private key parser
     function parsePrivateKey(key) {
       if (!key) return '';
       
       // Replace literal \n with actual newlines
       let parsed = key.replace(/\\n/g, '\n');
       
-      // Also handle if it comes as a single line with headers but no newlines
+      // Handle if it comes as a single line with headers but no newlines
       if (!parsed.includes('\n') && parsed.includes('-----BEGIN PRIVATE KEY-----')) {
         parsed = parsed
           .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
@@ -60,15 +70,27 @@ async function initializeFirebase() {
 
     const privateKey = parsePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
     
-    // Debug show: first 50 chars
-    console.log('🔧 Private key starts with:', privateKey.substring(0, 50));
+    // Debug: Check key format
+    console.log('Private key format check:');
+    console.log('- Starts with BEGIN:', privateKey.startsWith('-----BEGIN PRIVATE KEY-----'));
+    console.log('- Ends with END:', privateKey.endsWith('-----END PRIVATE KEY-----\n') || privateKey.endsWith('-----END PRIVATE KEY-----'));
+    console.log('- Contains newlines:', privateKey.includes('\n'));
+    console.log('- Length:', privateKey.length);
+    
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+    
+    console.log('Initializing Firebase with:', {
+      projectId: serviceAccount.projectId,
+      clientEmail: serviceAccount.clientEmail,
+      privateKeyLength: serviceAccount.privateKey.length
+    });
     
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
+      credential: admin.credential.cert(serviceAccount),
       databaseURL: process.env.FIREBASE_DATABASE_URL,
     });
     
@@ -124,7 +146,12 @@ const MPESA_BASE_URL =
     ? 'https://api.safaricom.co.ke'
     : 'https://sandbox.safaricom.co.ke';
 
-console.log('🔧 M-Pesa Config Loaded:', MPESA_CONFIG.environment || 'Not configured');
+console.log('🔧 M-Pesa Config:', {
+  env: MPESA_CONFIG.environment || 'Not set',
+  hasKey: !!MPESA_CONFIG.consumerKey,
+  hasSecret: !!MPESA_CONFIG.consumerSecret,
+  shortCode: MPESA_CONFIG.shortCode || 'Not set'
+});
 
 /* ======================================================
    📧 EmailJS Configuration
@@ -140,6 +167,9 @@ console.log('📧 EmailJS Config:', {
   hasServiceId: !!EMAILJS_CONFIG.serviceId,
   hasUserId: !!EMAILJS_CONFIG.userId,
   hasTemplateId: !!EMAILJS_CONFIG.templateId,
+  serviceId: EMAILJS_CONFIG.serviceId,
+  templateId: EMAILJS_CONFIG.templateId,
+  userId: EMAILJS_CONFIG.userId
 });
 
 /* ======================================================
