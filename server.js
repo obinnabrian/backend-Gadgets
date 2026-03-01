@@ -22,13 +22,18 @@ async function initializeFirebase() {
     'FIREBASE_DATABASE_URL'
   ];
 
-  // Debug: Log all env var presence
+  // Debug: Log all env var presence and length
   console.log('=== Firebase Config Debug ===');
-  console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET');
-  console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'NOT SET');
-  console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? 'SET' : 'NOT SET', 
-    process.env.FIREBASE_PRIVATE_KEY ? `(length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : '');
-  console.log('FIREBASE_DATABASE_URL:', process.env.FIREBASE_DATABASE_URL ? 'SET' : 'NOT SET');
+  console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? `SET (${process.env.FIREBASE_PROJECT_ID})` : 'NOT SET');
+  console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? `SET (${process.env.FIREBASE_CLIENT_EMAIL})` : 'NOT SET');
+  console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? `SET (length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : 'NOT SET');
+  console.log('FIREBASE_DATABASE_URL:', process.env.FIREBASE_DATABASE_URL ? `SET (${process.env.FIREBASE_DATABASE_URL})` : 'NOT SET');
+  
+  // Show first 50 chars of private key for debugging
+  if (process.env.FIREBASE_PRIVATE_KEY) {
+    console.log('Private key first 50 chars:', process.env.FIREBASE_PRIVATE_KEY.substring(0, 50));
+    console.log('Private key last 50 chars:', process.env.FIREBASE_PRIVATE_KEY.substring(process.env.FIREBASE_PRIVATE_KEY.length - 50));
+  }
   console.log('=============================');
 
   const missing = requiredVars.filter(v => !process.env[v]);
@@ -73,7 +78,7 @@ async function initializeFirebase() {
     // Debug: Check key format
     console.log('Private key format check:');
     console.log('- Starts with BEGIN:', privateKey.startsWith('-----BEGIN PRIVATE KEY-----'));
-    console.log('- Ends with END:', privateKey.endsWith('-----END PRIVATE KEY-----\n') || privateKey.endsWith('-----END PRIVATE KEY-----'));
+    console.log('- Contains END:', privateKey.includes('-----END PRIVATE KEY-----'));
     console.log('- Contains newlines:', privateKey.includes('\n'));
     console.log('- Length:', privateKey.length);
     
@@ -100,6 +105,10 @@ async function initializeFirebase() {
     return true;
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error.message);
+    console.error('Error type:', error.constructor.name);
+    if (error.message.includes('credential') || error.message.includes('private key')) {
+      console.error('This looks like a credential format issue. Check the secret value in Secret Manager.');
+    }
     console.error('Stack:', error.stack);
     return false;
   }
@@ -696,8 +705,8 @@ app.post('/api/mpesa/callback', async (req, res) => {
       // Send emails
       try {
         await sendOrderConfirmationEmail(updatedOrder);
-        await sendAdminNotificationEmail(updatedOrder);
-      } catch (emailError) {
+        await sendAdminNotificationEmail(updatedOrder (emailError));
+      } catch {
         console.error('📧 Email sending failed:', emailError.message);
       }
       
