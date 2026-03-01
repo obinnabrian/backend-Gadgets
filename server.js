@@ -13,6 +13,7 @@ const admin = require('firebase-admin');
    ====================================================== */
 let db = null;
 let firebaseInitialized = false;
+let firebaseInitError = null;
 
 async function initializeFirebase() {
   const requiredVars = [
@@ -104,6 +105,7 @@ async function initializeFirebase() {
     console.log('✅ Firebase Admin initialized successfully!');
     return true;
   } catch (error) {
+    firebaseInitError = error.message;
     console.error('❌ Firebase initialization failed:', error.message);
     console.error('Error type:', error.constructor.name);
     if (error.message.includes('credential') || error.message.includes('private key')) {
@@ -419,6 +421,31 @@ async function createNotification(message, type, orderId = null, details = null)
    📍 API Endpoints
    ====================================================== */
 
+// Debug endpoint - shows env var status (NOT values)
+app.get('/api/debug', (req, res) => {
+  res.json({
+    firebase: {
+      projectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET',
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'NOT SET',
+      privateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : 'NOT SET',
+      databaseUrl: process.env.FIREBASE_DATABASE_URL ? 'SET' : 'NOT SET',
+      initialized: firebaseInitialized,
+      error: firebaseInitError
+    },
+    mpesa: {
+      consumerKey: !!MPESA_CONFIG.consumerKey,
+      consumerSecret: !!MPESA_CONFIG.consumerSecret,
+      shortCode: MPESA_CONFIG.shortCode || 'NOT SET',
+      environment: MPESA_CONFIG.environment
+    },
+    emailjs: {
+      serviceId: !!EMAILJS_CONFIG.serviceId,
+      userId: !!EMAILJS_CONFIG.userId,
+      templateId: !!EMAILJS_CONFIG.templateId
+    }
+  });
+});
+
 // HostPinnacle SMS
 const ADMIN_PHONE = '254723555861';
 const SMS_SENDER_ID = 'Crestrock';
@@ -467,6 +494,7 @@ app.get('/api/health', (req, res) => {
     cors: 'enabled',
     endpoints: [
       'GET /api/health',
+      'GET /api/debug',
       'POST /api/orders',
       'GET /api/orders/:id',
       'POST /api/mpesa/stk-push',
@@ -705,8 +733,8 @@ app.post('/api/mpesa/callback', async (req, res) => {
       // Send emails
       try {
         await sendOrderConfirmationEmail(updatedOrder);
-        await sendAdminNotificationEmail(updatedOrder (emailError));
-      } catch {
+        await sendAdminNotificationEmail(updatedOrder);
+      } catch (emailError) {
         console.error('📧 Email sending failed:', emailError.message);
       }
       
