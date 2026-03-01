@@ -327,22 +327,53 @@ async function sendHostPinnaclesSMS(phone, message) {
   console.log('   Phone:', phone);
   console.log('   Message:', message);
   
+  // Try JSON POST to the REST API endpoint
   const url = `https://smsportal.hostpinnacle.co.ke/SMSApi/send`;
-  const params = new URLSearchParams({
+  
+  const payload = {
     apikey: apiKey,
     partnerID: '4725',
     message: message,
     Sender_ID: SMS_SENDER_ID,
     shortcode: SMS_SENDER_ID,
-    mobile: phone
-  });
+    mobile: phone,
+    action: 'send'
+  };
   
-  console.log('   URL:', url + '?' + params.toString());
+  console.log('   URL:', url);
+  console.log('   Payload:', JSON.stringify(payload));
   
-  const response = await fetch(`${url}?${params.toString()}`);
-  const result = await response.text();
-  console.log('   Response:', result);
-  return result;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.text();
+    console.log('   Response:', result);
+    return result;
+  } catch (error) {
+    console.log('   Error:', error.message);
+    // Fallback to GET request
+    const params = new URLSearchParams({
+      apikey: apiKey,
+      partnerID: '4725',
+      message: message,
+      Sender_ID: SMS_SENDER_ID,
+      shortcode: SMS_SENDER_ID,
+      mobile: phone,
+      action: 'send'
+    });
+    const fallbackUrl = `${url}?${params.toString()}`;
+    console.log('   Trying fallback URL:', fallbackUrl);
+    const fallbackResponse = await fetch(fallbackUrl);
+    const fallbackResult = await fallbackResponse.text();
+    console.log('   Fallback Response:', fallbackResult);
+    return fallbackResult;
+  }
 }
 
 app.post('/api/sms/send-order-confirmation', async (req, res) => {
