@@ -1,6 +1,9 @@
 runtime: nodejs18
 entryPoint: server.js
 
+buildEnvironment:
+  NPM_ENV: "production"
+
 runConfig:
   cpu: 1
   memoryMiB: 512
@@ -9,6 +12,10 @@ runConfig:
   concurrency: 80
 
 env:
+  - variable: NODE_ENV
+    value: "production"
+  - variable: PORT
+    value: "8080"
   - variable: MPESA_CONSUMER_KEY
     secret: mpesa_consumer_key
   - variable: MPESA_CONSUMER_SECRET
