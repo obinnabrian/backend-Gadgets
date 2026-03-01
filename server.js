@@ -23,38 +23,35 @@ async function initializeFirebase() {
     'FIREBASE_DATABASE_URL'
   ];
 
+  // Trim all values to remove whitespace/newlines from secrets
+  const trimValue = (v) => v ? v.toString().trim() : v;
+  
+  const projectId = trimValue(process.env.FIREBASE_PROJECT_ID);
+  const clientEmail = trimValue(process.env.FIREBASE_CLIENT_EMAIL);
+  const privateKey = trimValue(process.env.FIREBASE_PRIVATE_KEY);
+  const databaseUrl = trimValue(process.env.FIREBASE_DATABASE_URL);
+
   console.log('=== Firebase Config Debug ===');
-  console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? `SET (${process.env.FIREBASE_PROJECT_ID})` : 'NOT SET');
-  console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? `SET` : 'NOT SET');
-  console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? `SET (length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : 'NOT SET');
-  console.log('FIREBASE_DATABASE_URL:', process.env.FIREBASE_DATABASE_URL ? `SET (${process.env.FIREBASE_DATABASE_URL})` : 'NOT SET');
+  console.log('FIREBASE_PROJECT_ID:', projectId ? `SET (${projectId})` : 'NOT SET');
+  console.log('FIREBASE_CLIENT_EMAIL:', clientEmail ? `SET` : 'NOT SET');
+  console.log('FIREBASE_PRIVATE_KEY:', privateKey ? `SET (length: ${privateKey.length})` : 'NOT SET');
+  console.log('FIREBASE_DATABASE_URL:', databaseUrl ? `SET (${databaseUrl})` : 'NOT SET');
   console.log('=============================');
 
-  const missing = requiredVars.filter(v => !process.env[v]);
+  const missing = [projectId, clientEmail, privateKey, databaseUrl].filter(v => !v);
   
   if (missing.length > 0) {
-    console.warn('⚠️ Missing Firebase environment variables:', missing);
+    console.warn('⚠️ Missing Firebase environment variables');
     console.warn('Firebase features will be disabled');
     return false;
   }
 
   // Check if private key is a placeholder
-  const keyValue = process.env.FIREBASE_PRIVATE_KEY;
-  if (keyValue.includes('YOUR_PRIVATE_KEY_HERE') || 
-      keyValue.includes('placeholder') ||
-      keyValue.includes('GET_THIS_FROM') ||
-      keyValue.length < 100) {
+  if (privateKey.includes('YOUR_PRIVATE_KEY_HERE') || 
+      privateKey.includes('placeholder') ||
+      privateKey.includes('GET_THIS_FROM') ||
+      privateKey.length < 100) {
     console.warn('⚠️ Firebase private key appears to be invalid or placeholder');
-    return false;
-  }
-
-  // Validate database URL - check for forbidden characters
-  const dbUrl = process.env.FIREBASE_DATABASE_URL;
-  if (dbUrl && (dbUrl.includes('#') || dbUrl.includes('$') || dbUrl.includes('[') || dbUrl.includes(']'))) {
-    console.error('❌ Invalid Firebase Database URL - contains forbidden characters: # $ [ ]');
-    console.error('Current URL:', dbUrl);
-    console.error('Should be like: https://gadgets-83800-default-rtdb.firebaseio.com');
-    firebaseInitError = 'Invalid database URL format';
     return false;
   }
 
@@ -71,19 +68,19 @@ async function initializeFirebase() {
       return parsed;
     }
 
-    const privateKey = parsePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+    const parsedKey = parsePrivateKey(privateKey);
     
     const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: privateKey,
+      projectId: projectId,
+      clientEmail: clientEmail,
+      privateKey: parsedKey,
     };
     
     console.log('Initializing Firebase with projectId:', serviceAccount.projectId);
     
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: process.env.FIREBASE_DATABASE_URL,
+      databaseURL: databaseUrl,
     });
     
     db = admin.database();
@@ -205,7 +202,7 @@ async function sendOrderConfirmationEmail(order) {
     if (!order.customerInfo?.email || !EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.userId) return false;
     const orderIdShort = order.id.slice(-8).toUpperCase();
     const totalAmount = order.total.toLocaleString();
-    const itemsListHTML = order.items.map(item => `<tr><td style="padding:10px;border-bottom:1px solid #e5e7eb"><strong>${item.name}</strong><br><small>${item.brand} • Qty: ${item.quantity}</small></td><td style="text-align:right;padding:10px;border-bottom:1px solid #e5e7eb">KSh ${(item.price * item.quantity).toLocaleString()}</td></tr>`).join('');
+    const itemsListHTML = order.items.map(item => `<tr><td style=";border-bottom:1padding:10pxpx solid #e5e7eb"><strong>${item.name}</strong><br><small>${item.brand} • Qty: ${item.quantity}</small></td><td style="text-align:right;padding:10px;border-bottom:1px solid #e5e7eb">KSh ${(item.price * item.quantity).toLocaleString()}</td></tr>`).join('');
     const emailData = {
       to_email: order.customerInfo.email, customer_name: order.customerInfo.name, order_id: orderIdShort,
       items_list: itemsListHTML, total_amount: totalAmount, delivery_address: order.customerInfo.deliveryAddress,
@@ -281,10 +278,10 @@ async function createNotification(message, type, orderId = null, details = null)
 app.get('/api/debug', (req, res) => {
   res.json({
     firebase: { 
-      projectId: process.env.FIREBASE_PROJECT_ID ? `SET (${process.env.FIREBASE_PROJECT_ID})` : 'NOT SET', 
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? `SET` : 'NOT SET', 
+      projectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET', 
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'NOT SET', 
       privateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : 'NOT SET', 
-      databaseUrl: process.env.FIREBASE_DATABASE_URL || 'NOT SET', 
+      databaseUrl: process.env.FIREBASE_DATABASE_URL ? 'SET' : 'NOT SET', 
       initialized: firebaseInitialized, 
       error: firebaseInitError 
     },
