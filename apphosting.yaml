@@ -43,6 +43,6 @@ env:
   - variable: EMAILJS_ACCESS_TOKEN
     secret: emailjs_access_token
   - variable: HOSTPINNACLE_SMS_API_KEY
-    secret: hostpinnacle_sms_api_key
+    value: "54e02de12e0b842acf9fae5a56d74ada8192e9eb"
   - variable: HOSTPINNACLE_SENDER_ID
     value: "Crestrock"
