@@ -6,5 +6,13 @@
       "**/.*",
       "**/node_modules/**"
     ]
+  },
+  "apphosting": {
+    "backends": [
+      {
+        "backendId": "backend-gadgets",
+        "location": "us-east5"
+      }
+    ]
   }
 }
