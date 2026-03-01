@@ -15,30 +15,32 @@ let db = null;
 let firebaseInitialized = false;
 let firebaseInitError = null;
 
-async function initializeFirebase() {
-  const requiredVars = [
-    'FIREBASE_PROJECT_ID',
-    'FIREBASE_CLIENT_EMAIL', 
-    'FIREBASE_PRIVATE_KEY',
-    'FIREBASE_DATABASE_URL'
-  ];
+// Store config for debug
+let firebaseConfig = {
+  projectId: null,
+  clientEmail: null,
+  privateKey: null,
+  databaseUrl: null
+};
 
-  // Trim all values to remove whitespace/newlines from secrets
+async function initializeFirebase() {
+  // Trim whitespace and remove trailing slashes from URLs
   const trimValue = (v) => v ? v.toString().trim() : v;
+  const trimUrl = (v) => v ? v.toString().trim().replace(/\/+$/, '') : v;
   
-  const projectId = trimValue(process.env.FIREBASE_PROJECT_ID);
-  const clientEmail = trimValue(process.env.FIREBASE_CLIENT_EMAIL);
-  const privateKey = trimValue(process.env.FIREBASE_PRIVATE_KEY);
-  const databaseUrl = trimValue(process.env.FIREBASE_DATABASE_URL);
+  firebaseConfig.projectId = trimValue(process.env.FIREBASE_PROJECT_ID);
+  firebaseConfig.clientEmail = trimValue(process.env.FIREBASE_CLIENT_EMAIL);
+  firebaseConfig.privateKey = trimValue(process.env.FIREBASE_PRIVATE_KEY);
+  firebaseConfig.databaseUrl = trimUrl(process.env.FIREBASE_DATABASE_URL);
 
   console.log('=== Firebase Config Debug ===');
-  console.log('FIREBASE_PROJECT_ID:', projectId ? `SET (${projectId})` : 'NOT SET');
-  console.log('FIREBASE_CLIENT_EMAIL:', clientEmail ? `SET` : 'NOT SET');
-  console.log('FIREBASE_PRIVATE_KEY:', privateKey ? `SET (length: ${privateKey.length})` : 'NOT SET');
-  console.log('FIREBASE_DATABASE_URL:', databaseUrl ? `SET (${databaseUrl})` : 'NOT SET');
+  console.log('FIREBASE_PROJECT_ID:', firebaseConfig.projectId ? `SET (${firebaseConfig.projectId})` : 'NOT SET');
+  console.log('FIREBASE_CLIENT_EMAIL:', firebaseConfig.clientEmail ? `SET` : 'NOT SET');
+  console.log('FIREBASE_PRIVATE_KEY:', firebaseConfig.privateKey ? `SET (length: ${firebaseConfig.privateKey.length})` : 'NOT SET');
+  console.log('FIREBASE_DATABASE_URL:', firebaseConfig.databaseUrl ? `SET (${firebaseConfig.databaseUrl})` : 'NOT SET');
   console.log('=============================');
 
-  const missing = [projectId, clientEmail, privateKey, databaseUrl].filter(v => !v);
+  const missing = [firebaseConfig.projectId, firebaseConfig.clientEmail, firebaseConfig.privateKey, firebaseConfig.databaseUrl].filter(v => !v);
   
   if (missing.length > 0) {
     console.warn('⚠️ Missing Firebase environment variables');
@@ -47,10 +49,10 @@ async function initializeFirebase() {
   }
 
   // Check if private key is a placeholder
-  if (privateKey.includes('YOUR_PRIVATE_KEY_HERE') || 
-      privateKey.includes('placeholder') ||
-      privateKey.includes('GET_THIS_FROM') ||
-      privateKey.length < 100) {
+  if (firebaseConfig.privateKey.includes('YOUR_PRIVATE_KEY_HERE') || 
+      firebaseConfig.privateKey.includes('placeholder') ||
+      firebaseConfig.privateKey.includes('GET_THIS_FROM') ||
+      firebaseConfig.privateKey.length < 100) {
     console.warn('⚠️ Firebase private key appears to be invalid or placeholder');
     return false;
   }
@@ -68,19 +70,20 @@ async function initializeFirebase() {
       return parsed;
     }
 
-    const parsedKey = parsePrivateKey(privateKey);
+    const parsedKey = parsePrivateKey(firebaseConfig.privateKey);
     
     const serviceAccount = {
-      projectId: projectId,
-      clientEmail: clientEmail,
+      projectId: firebaseConfig.projectId,
+      clientEmail: firebaseConfig.clientEmail,
       privateKey: parsedKey,
     };
     
     console.log('Initializing Firebase with projectId:', serviceAccount.projectId);
+    console.log('Database URL:', firebaseConfig.databaseUrl);
     
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: databaseUrl,
+      databaseURL: firebaseConfig.databaseUrl,
     });
     
     db = admin.database();
@@ -202,7 +205,7 @@ async function sendOrderConfirmationEmail(order) {
     if (!order.customerInfo?.email || !EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.userId) return false;
     const orderIdShort = order.id.slice(-8).toUpperCase();
     const totalAmount = order.total.toLocaleString();
-    const itemsListHTML = order.items.map(item => `<tr><td style=";border-bottom:1padding:10pxpx solid #e5e7eb"><strong>${item.name}</strong><br><small>${item.brand} • Qty: ${item.quantity}</small></td><td style="text-align:right;padding:10px;border-bottom:1px solid #e5e7eb">KSh ${(item.price * item.quantity).toLocaleString()}</td></tr>`).join('');
+    const itemsListHTML = order.items.map(item => `<tr><td style="padding:10px;border-bottom:1px solid #e5e7eb"><strong>${item.name}</strong><br><small>${item.brand} • Qty: ${item.quantity}</small></td><td style="text-align:right;padding:10px;border-bottom:1px solid #e5e7eb">KSh ${(item.price * item.quantity).toLocaleString()}</td></tr>`).join('');
     const emailData = {
       to_email: order.customerInfo.email, customer_name: order.customerInfo.name, order_id: orderIdShort,
       items_list: itemsListHTML, total_amount: totalAmount, delivery_address: order.customerInfo.deliveryAddress,
@@ -278,10 +281,10 @@ async function createNotification(message, type, orderId = null, details = null)
 app.get('/api/debug', (req, res) => {
   res.json({
     firebase: { 
-      projectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET', 
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'NOT SET', 
-      privateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : 'NOT SET', 
-      databaseUrl: process.env.FIREBASE_DATABASE_URL ? 'SET' : 'NOT SET', 
+      projectId: firebaseConfig.projectId ? `SET (${firebaseConfig.projectId})` : 'NOT SET', 
+      clientEmail: firebaseConfig.clientEmail ? 'SET' : 'NOT SET', 
+      privateKey: firebaseConfig.privateKey ? `SET (length: ${firebaseConfig.privateKey.length})` : 'NOT SET', 
+      databaseUrl: firebaseConfig.databaseUrl || 'NOT SET', 
       initialized: firebaseInitialized, 
       error: firebaseInitError 
     },
