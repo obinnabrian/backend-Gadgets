@@ -1,17 +1,9 @@
 {
-  "hosting": {
-    "source": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  },
   "apphosting": {
     "backends": [
       {
         "backendId": "backend-gadgets",
-        "location": "us-east5"
+        "region": "us-east5"
       }
     ]
   }
