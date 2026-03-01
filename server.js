@@ -15,7 +15,6 @@ let db = null;
 let firebaseInitialized = false;
 let firebaseInitError = null;
 
-// Store config for debug
 let firebaseConfig = {
   projectId: null,
   clientEmail: null,
@@ -24,7 +23,6 @@ let firebaseConfig = {
 };
 
 async function initializeFirebase() {
-  // Trim whitespace and remove trailing slashes from URLs
   const trimValue = (v) => v ? v.toString().trim() : v;
   const trimUrl = (v) => v ? v.toString().trim().replace(/\/+$/, '') : v;
   
@@ -48,7 +46,6 @@ async function initializeFirebase() {
     return false;
   }
 
-  // Check if private key is a placeholder
   if (firebaseConfig.privateKey.includes('YOUR_PRIVATE_KEY_HERE') || 
       firebaseConfig.privateKey.includes('placeholder') ||
       firebaseConfig.privateKey.includes('GET_THIS_FROM') ||
@@ -58,7 +55,6 @@ async function initializeFirebase() {
   }
 
   try {
-    // Robust private key parser
     function parsePrivateKey(key) {
       if (!key) return '';
       let parsed = key.replace(/\\n/g, '\n');
@@ -139,6 +135,9 @@ const MPESA_BASE_URL =
 console.log('🔧 M-Pesa Config:', {
   env: MPESA_CONFIG.environment || 'Not set',
   hasKey: !!MPESA_CONFIG.consumerKey,
+  hasSecret: !!MPESA_CONFIG.consumerSecret,
+  hasShortCode: !!MPESA_CONFIG.shortCode,
+  hasPassKey: !!MPESA_CONFIG.passKey,
   shortCode: MPESA_CONFIG.shortCode || 'Not set'
 });
 
@@ -163,18 +162,33 @@ console.log('📧 EmailJS Config:', {
 async function getMpesaAccessToken() {
   try {
     console.log('🔐 Getting M-Pesa access token...');
+    
     if (!MPESA_CONFIG.consumerKey || !MPESA_CONFIG.consumerSecret) {
       throw new Error('M-Pesa consumer key or secret not configured');
     }
+    
     const auth = Buffer.from(`${MPESA_CONFIG.consumerKey}:${MPESA_CONFIG.consumerSecret}`).toString('base64');
+    console.log('📡 Requesting token from:', `${MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials`);
+
     const response = await axios.get(
       `${MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
-      { headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+      { 
+        headers: { 
+          Authorization: `Basic ${auth}`, 
+          'Content-Type': 'application/json' 
+        }, 
+        timeout: 15000,
+      }
     );
+
     console.log('✅ M-Pesa token obtained');
     return response.data.access_token;
   } catch (error) {
     console.error('❌ M-Pesa auth failed:', error.message);
+    if (error.response) {
+      console.error('   Status:', error.response.status);
+      console.error('   Response:', JSON.stringify(error.response.data));
+    }
     throw new Error(`M-Pesa auth failed: ${error.message}`);
   }
 }
@@ -288,7 +302,13 @@ app.get('/api/debug', (req, res) => {
       initialized: firebaseInitialized, 
       error: firebaseInitError 
     },
-    mpesa: { consumerKey: !!MPESA_CONFIG.consumerKey, shortCode: MPESA_CONFIG.shortCode || 'NOT SET', environment: MPESA_CONFIG.environment },
+    mpesa: { 
+      consumerKey: !!MPESA_CONFIG.consumerKey, 
+      shortCode: MPESA_CONFIG.shortCode || 'NOT SET', 
+      environment: MPESA_CONFIG.environment,
+      hasConsumerSecret: !!MPESA_CONFIG.consumerSecret,
+      hasPassKey: !!MPESA_CONFIG.passKey
+    },
     emailjs: { serviceId: !!EMAILJS_CONFIG.serviceId, userId: !!EMAILJS_CONFIG.userId }
   });
 });
@@ -357,28 +377,111 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
   try {
     console.log('📱 STK Push request received');
     const { phoneNumber, amount, orderId, accountReference, transactionDesc } = req.body;
+    
     if (!phoneNumber) return res.status(400).json({ success: false, message: 'Phone number is required' });
     if (!amount || amount <= 0) return res.status(400).json({ success: false, message: 'Valid amount is required' });
     if (!orderId) return res.status(400).json({ success: false, message: 'Order ID is required' });
+
+    // Validate M-Pesa configuration
+    if (!MPESA_CONFIG.consumerKey || !MPESA_CONFIG.consumerSecret || !MPESA_CONFIG.shortCode || !MPESA_CONFIG.passKey) {
+      console.error('❌ M-Pesa not properly configured');
+      return res.status(500).json({ 
+        success: false, 
+        message: 'M-Pesa payment system is not properly configured. Please contact support.' 
+      });
+    }
+
     const order = await getOrderById(orderId);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
     const token = await getMpesaAccessToken();
     const phone = formatPhone(phoneNumber);
     const timestamp = generateTimestamp();
     const password = Buffer.from(MPESA_CONFIG.shortCode + MPESA_CONFIG.passKey + timestamp).toString('base64');
+
     const mpesaPayload = {
-      BusinessShortCode: MPESA_CONFIG.shortCode, Password: password, Timestamp: timestamp, TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.round(amount), PartyA: phone, PartyB: MPESA_CONFIG.shortCode, PhoneNumber: phone,
+      BusinessShortCode: MPESA_CONFIG.shortCode,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: 'CustomerPayBillOnline',
+      Amount: Math.round(amount),
+      PartyA: phone,
+      PartyB: MPESA_CONFIG.shortCode,
+      PhoneNumber: phone,
       CallBackURL: process.env.MPESA_CALLBACK_URL || `https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback`,
-      AccountReference: accountReference || `ORDER-${orderId.slice(-8)}`, TransactionDesc: transactionDesc || 'Gadgets Purchase'
+      AccountReference: accountReference || `ORDER-${orderId.slice(-8)}`,
+      TransactionDesc: transactionDesc || 'Gadgets Purchase'
     };
-    const response = await axios.post(`${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`, mpesaPayload, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 30000 });
-    if (firebaseInitialized && db) {
-      await updateOrderStatus(orderId, 'payment_pending', { checkoutRequestId: response.data.CheckoutRequestID, merchantRequestId: response.data.MerchantRequestID, stkPushSentAt: new Date().toISOString(), amount, phoneNumber: phone });
-      await createNotification(`📱 STK Push sent to ${phone} for Order #${orderId.slice(-8)} (KSh ${amount})`, 'info', orderId);
+
+    console.log('📡 Sending STK Push to:', MPESA_BASE_URL);
+    console.log('   Payload:', JSON.stringify(mpesaPayload, null, 2));
+
+    const response = await axios.post(
+      `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
+      mpesaPayload,
+      { 
+        headers: { 
+          Authorization: `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+        }, 
+        timeout: 30000 
+      }
+    );
+
+    console.log('✅ STK Push response:', JSON.stringify(response.data));
+
+    if (response.data.ResponseCode === '0') {
+      if (firebaseInitialized && db) {
+        await updateOrderStatus(orderId, 'payment_pending', { 
+          checkoutRequestId: response.data.CheckoutRequestID, 
+          merchantRequestId: response.data.MerchantRequestID, 
+          stkPushSentAt: new Date().toISOString(), 
+          amount, 
+          phoneNumber: phone 
+        });
+        await createNotification(`📱 STK Push sent to ${phone} for Order #${orderId.slice(-8)} (KSh ${amount})`, 'info', orderId);
+      }
+      res.json({ 
+        success: true, 
+        data: response.data, 
+        message: response.data.CustomerMessage || 'STK Push initiated successfully' 
+      });
+    } else {
+      console.error('❌ STK Push failed:', response.data);
+      res.status(400).json({ 
+        success: false, 
+        message: response.data.ResponseDescription || 'STK Push failed',
+        details: response.data
+      });
     }
-    res.json({ success: true, data: response.data, message: 'STK Push initiated successfully' });
-  } catch (error) { console.error('❌ STK Push error:', error.message); res.status(500).json({ success: false, message: error.message || 'Failed to initiate STK Push' }); }
+  } catch (error) {
+    console.error('❌ STK Push error:', error.message);
+    
+    let errorMessage = 'Failed to initiate M-Pesa payment';
+    let statusCode = 500;
+    
+    if (error.response) {
+      console.error('   Safaricom API error:', error.response.status);
+      console.error('   Response:', JSON.stringify(error.response.data));
+      
+      if (error.response.status === 400) {
+        errorMessage = error.response.data?.errorMessage || error.response.data?.message || 'Invalid request to M-Pesa. Please check your phone number and try again.';
+        statusCode = 400;
+      } else if (error.response.status === 401) {
+        errorMessage = 'M-Pesa authentication failed. Please contact support.';
+      } else if (error.response.status === 503) {
+        errorMessage = 'M-Pesa service is temporarily unavailable. Please try again in a few minutes.';
+      }
+    } else if (error.code === 'ECONNABORTED') {
+      errorMessage = 'M-Pesa request timed out. Please try again.';
+    }
+    
+    res.status(statusCode).json({ 
+      success: false, 
+      message: errorMessage,
+      error: error.message 
+    });
+  }
 });
 
 app.post('/api/mpesa/callback', async (req, res) => {
