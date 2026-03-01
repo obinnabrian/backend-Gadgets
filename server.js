@@ -280,7 +280,14 @@ async function createNotification(message, type, orderId = null, details = null)
    ====================================================== */
 app.get('/api/debug', (req, res) => {
   res.json({
-    firebase: { projectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET', clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'NOT SET', privateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : 'NOT SET', databaseUrl: process.env.FIREBASE_DATABASE_URL || 'NOT SET', initialized: firebaseInitialized, error: firebaseInitError },
+    firebase: { 
+      projectId: process.env.FIREBASE_PROJECT_ID ? `SET (${process.env.FIREBASE_PROJECT_ID})` : 'NOT SET', 
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? `SET` : 'NOT SET', 
+      privateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (length: ${process.env.FIREBASE_PRIVATE_KEY.length})` : 'NOT SET', 
+      databaseUrl: process.env.FIREBASE_DATABASE_URL || 'NOT SET', 
+      initialized: firebaseInitialized, 
+      error: firebaseInitError 
+    },
     mpesa: { consumerKey: !!MPESA_CONFIG.consumerKey, shortCode: MPESA_CONFIG.shortCode || 'NOT SET', environment: MPESA_CONFIG.environment },
     emailjs: { serviceId: !!EMAILJS_CONFIG.serviceId, userId: !!EMAILJS_CONFIG.userId }
   });
