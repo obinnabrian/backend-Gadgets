@@ -456,7 +456,15 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
       }
     }
 
-    const rawCallback = process.env.MPESA_CALLBACK_URL || `https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback/`;
+    const rawCallback = process.env.MPESA_CALLBACK_URL;
+    if (!rawCallback) {
+      console.error('❌ MPESA_CALLBACK_URL environment variable not set!');
+      return res.status(500).json({ 
+        success: false, 
+        message: 'M-Pesa callback URL not configured. Set MPESA_CALLBACK_URL environment variable on Cloud Run service.' 
+      });
+    }
+    
     const callbackUrl = normalizeCallbackUrl(rawCallback);
     if (!callbackUrl) {
       console.error('❌ Invalid MPESA_CALLBACK_URL configured:', rawCallback);
