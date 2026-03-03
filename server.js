@@ -313,66 +313,56 @@ app.get('/api/debug', (req, res) => {
   });
 });
 
+// SMS Configuration - HostPinnacle
 const ADMIN_PHONE = '254723555861';
 const SMS_SENDER_ID = 'Crestrock';
+const SMS_USER_ID = process.env.HOSTPINNACLE_SMS_USERID || 'obinnabrian';
+const SMS_PASSWORD = process.env.HOSTPINNACLE_SMS_PASSWORD || 'Q7zrTux7';
 
 // Log SMS config at startup
 console.log('📱 SMS Config:');
-console.log('   HOSTPINNACLE_SMS_API_KEY set:', !!process.env.HOSTPINNACLE_SMS_API_KEY);
-console.log('   API Key value:', process.env.HOSTPINNACLE_SMS_API_KEY ? `${process.env.HOSTPINNACLE_SMS_API_KEY.substring(0, 8)}...` : 'NOT SET');
+console.log('   HOSTPINNACLE_SMS_USERID set:', !!SMS_USER_ID);
+console.log('   HOSTPINNACLE_SMS_PASSWORD set:', !!SMS_PASSWORD);
 
+// Send SMS using HostPinnacle API
 async function sendHostPinnaclesSMS(phone, message) {
-  const apiKey = process.env.HOSTPINNACLE_SMS_API_KEY || '1ded5da8f455a25ef5566afd260a1158d8963892';
-  console.log('📱 Sending SMS with API key:', apiKey.substring(0, 8) + '...');
-  console.log('   Phone:', phone);
+  if (!SMS_PASSWORD) {
+    console.error('❌ SMS Password not configured');
+    return 'SMS Password not configured';
+  }
+  
+  console.log('📱 Sending SMS to:', phone);
   console.log('   Message:', message);
+  console.log('   UserID:', SMS_USER_ID);
   
-  // Try JSON POST to the REST API endpoint
-  const url = `https://smsportal.hostpinnacle.co.ke/SMSApi/send`;
+  // Use POST method with form data for HostPinnacle API
+  const url = 'https://smsportal.hostpinnacle.co.ke/SMSApi/send';
   
-  const payload = {
-    apikey: apiKey,
-    partnerID: '4725',
-    message: message,
-    Sender_ID: SMS_SENDER_ID,
-    shortcode: SMS_SENDER_ID,
-    mobile: phone,
-    action: 'send'
-  };
+  const formData = new URLSearchParams();
+  formData.append('userid', SMS_USER_ID);
+  formData.append('password', SMS_PASSWORD);
+  formData.append('message', message);
+  formData.append('sender', SMS_SENDER_ID);
+  formData.append('mobile', phone);
+  formData.append('output', 'text');
   
   console.log('   URL:', url);
-  console.log('   Payload:', JSON.stringify(payload));
+  console.log('   FormData:', formData.toString());
   
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(payload)
+      body: formData.toString()
     });
     const result = await response.text();
     console.log('   Response:', result);
     return result;
   } catch (error) {
     console.log('   Error:', error.message);
-    // Fallback to GET request
-    const params = new URLSearchParams({
-      apikey: apiKey,
-      partnerID: '4725',
-      message: message,
-      Sender_ID: SMS_SENDER_ID,
-      shortcode: SMS_SENDER_ID,
-      mobile: phone,
-      action: 'send'
-    });
-    const fallbackUrl = `${url}?${params.toString()}`;
-    console.log('   Trying fallback URL:', fallbackUrl);
-    const fallbackResponse = await fetch(fallbackUrl);
-    const fallbackResult = await fallbackResponse.text();
-    console.log('   Fallback Response:', fallbackResult);
-    return fallbackResult;
+    return 'Error: ' + error.message;
   }
 }
 
@@ -536,6 +526,13 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
       error: error.message 
     });
   }
+});
+
+app.get('/api/mpesa/callback', async (req, res) => {
+  // Safaricom sometimes sends a GET request to verify the callback URL is reachable
+  // This is a common validation step before sending the actual POST callback
+  console.log('📞 M-Pesa callback URL validation (GET) received');
+  res.json({ ResultCode: 0, ResultDesc: 'Callback URL is valid and reachable' });
 });
 
 app.post('/api/mpesa/callback', async (req, res) => {
