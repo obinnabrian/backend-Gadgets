@@ -443,6 +443,26 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
     const timestamp = generateTimestamp();
     const password = Buffer.from(MPESA_CONFIG.shortCode + MPESA_CONFIG.passKey + timestamp).toString('base64');
 
+    // Validate and normalize callback URL
+    function normalizeCallbackUrl(raw) {
+      if (!raw) return null;
+      try {
+        const u = new URL(raw.toString().trim());
+        if (u.protocol !== 'https:') return null;
+        // ensure single trailing slash
+        return u.href.replace(/\/+$/, '') + '/';
+      } catch (e) {
+        return null;
+      }
+    }
+
+    const rawCallback = process.env.MPESA_CALLBACK_URL || `https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback/`;
+    const callbackUrl = normalizeCallbackUrl(rawCallback);
+    if (!callbackUrl) {
+      console.error('❌ Invalid MPESA_CALLBACK_URL configured:', rawCallback);
+      return res.status(500).json({ success: false, message: 'Invalid MPESA_CALLBACK_URL configured on server. Must be a valid https URL.' });
+    }
+
     const mpesaPayload = {
       BusinessShortCode: MPESA_CONFIG.shortCode,
       Password: password,
@@ -452,7 +472,7 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
       PartyA: phone,
       PartyB: MPESA_CONFIG.shortCode,
       PhoneNumber: phone,
-      CallBackURL: process.env.MPESA_CALLBACK_URL || `https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback/`,
+      CallBackURL: callbackUrl,
       AccountReference: accountReference || `ORDER-${orderId.slice(-8)}`,
       TransactionDesc: transactionDesc || 'Gadgets Purchase'
     };
