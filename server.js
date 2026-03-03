@@ -307,7 +307,8 @@ app.get('/api/debug', (req, res) => {
       shortCode: MPESA_CONFIG.shortCode || 'NOT SET', 
       environment: MPESA_CONFIG.environment,
       hasConsumerSecret: !!MPESA_CONFIG.consumerSecret,
-      hasPassKey: !!MPESA_CONFIG.passKey
+      hasPassKey: !!MPESA_CONFIG.passKey,
+      callbackUrlEnv: process.env.MPESA_CALLBACK_URL || 'not set'
     },
     emailjs: { serviceId: !!EMAILJS_CONFIG.serviceId, userId: !!EMAILJS_CONFIG.userId }
   });
@@ -318,6 +319,9 @@ const ADMIN_PHONE = '254723555861';
 const SMS_SENDER_ID = 'Crestrock';
 const SMS_USER_ID = process.env.HOSTPINNACLE_SMS_USERID || 'obinnabrian';
 const SMS_PASSWORD = process.env.HOSTPINNACLE_SMS_PASSWORD || 'Q7zrTux7';
+
+// note: remove any hardcoded hosted.app references from code; environment variables should be used
+
 
 // Log SMS config at startup
 console.log('📱 SMS Config:');
