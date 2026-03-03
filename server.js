@@ -452,7 +452,7 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
       PartyA: phone,
       PartyB: MPESA_CONFIG.shortCode,
       PhoneNumber: phone,
-      CallBackURL: process.env.MPESA_CALLBACK_URL || `https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback`,
+      CallBackURL: process.env.MPESA_CALLBACK_URL || `https://backend-gadgets--gadgets-83800.us-east5.hosted.app/api/mpesa/callback/`,
       AccountReference: accountReference || `ORDER-${orderId.slice(-8)}`,
       TransactionDesc: transactionDesc || 'Gadgets Purchase'
     };
@@ -529,10 +529,20 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
 });
 
 app.get('/api/mpesa/callback', async (req, res) => {
-  // Safaricom sometimes sends a GET request to verify the callback URL is reachable
-  // This is a common validation step before sending the actual POST callback
-  console.log('📞 M-Pesa callback URL validation (GET) received');
-  res.json({ ResultCode: 0, ResultDesc: 'Callback URL is valid and reachable' });
+  try {
+    console.log('📞 M-Pesa Validation GET request received');
+    console.log('   Query params:', req.query);
+    res.status(200).json({ 
+      ResultCode: 0, 
+      ResultDesc: 'Success' 
+    });
+  } catch (error) {
+    console.error('❌ M-Pesa validation error:', error.message);
+    res.status(200).json({ 
+      ResultCode: 0, 
+      ResultDesc: 'Success' 
+    });
+  }
 });
 
 app.post('/api/mpesa/callback', async (req, res) => {
