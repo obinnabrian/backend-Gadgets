@@ -448,8 +448,10 @@ app.post('/api/mpesa/stk-push', async (req, res) => {
       if (!raw) return null;
       try {
         const u = new URL(raw.toString().trim());
-        if (u.protocol !== 'https:') return null;
-        // ensure single trailing slash
+        if (u.protocol !== 'https:') return null;      // warn if using hosted.app domain (Safaricom's validator often rejects it)
+      if (u.hostname.endsWith('.hosted.app')) {
+        console.warn('⚠️ MPESA_CALLBACK_URL is on a hosted.app domain; consider using the run.app URL instead.');
+      }        // ensure single trailing slash
         return u.href.replace(/\/+$/, '') + '/';
       } catch (e) {
         return null;
